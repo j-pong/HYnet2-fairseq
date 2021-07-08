@@ -15,8 +15,8 @@ ARG_PUID?=$(shell id -u)
 ARG_PGID?=$(shell id -g)
 
 # Container network preference
-ARG_PORT_SSH?=32780
-ARG_PORT_TENSORBOARD?=9280
+ARG_PORT_SSH?=32770
+ARG_PORT_TENSORBOARD?=9270
 
 # Container mount point
 ARG_WORKSPACE_HOST?=$(realpath ../..)
