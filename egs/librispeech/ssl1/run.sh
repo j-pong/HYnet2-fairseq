@@ -12,6 +12,15 @@ python $FAIRSEQ_PATH/examples/wav2vec/wav2vec_manifest.py /DB/LibriSpeech/LibriS
     --valid-percent 0
 cp data/dev-other/train.tsv data/train-960/valid.tsv
 
+python $FAIRSEQ_PATH/examples/wav2vec/wav2vec_manifest.py /DB/LibriSpeech/LibriSpeech-valid/test-clean \
+    --dest data/test-clean \
+    --ext flac \
+    --valid-percent 0
+python $FAIRSEQ_PATH/examples/wav2vec/wav2vec_manifest.py /DB/LibriSpeech/LibriSpeech-valid/test-other \
+    --dest data/test-other \
+    --ext flac \
+    --valid-percent 0
+
 # stage 2. pre-training
 ## single-node
 fairseq-hydra-train task.data=$PWD/data/train-960 distributed_training.distributed_world_size=4 optimization.update_freq='[43]'\
@@ -40,7 +49,6 @@ python $FAIRSEQ_PATH/examples/wav2vec/libri_labels.py $PWD/data/train-clean-100/
     --output-name valid
 cp data/dev-other/train.tsv data/train-clean-100/valid.tsv
 
-# fairseq
 fairseq-hydra-train task.data=$PWD/data/train-clean-100 \
     task.normalize=false model.w2v_path=$PWD/downloads/libri960_big.pt optimization.max_update=80000\
     dataset.valid_subset=valid \
@@ -50,16 +58,18 @@ fairseq-hydra-train task.data=$PWD/data/train-clean-100 \
     --config-name vox_100h \
     --config-dir $FAIRSEQ_PATH/examples/wav2vec/config/finetuning
 
-# stage 4. decoding
-python $FAIRSEQ_PATH/examples/wav2vec/wav2vec_manifest.py /DB/LibriSpeech/LibriSpeech-valid/test-other \
-    --dest data/test-other \
+# stage 4. self-training
+python $FAIRSEQ_PATH/examples/wav2vec/wav2vec_manifest.py /DB/LibriSpeech/LibriSpeech/train-clean-100 \
+    --dest data/train-clean-100 \
     --ext flac \
     --valid-percent 0
-cp data/test-other/train.tsv data/train-clean-100/test.tsv
+
+# stage 5. decoding
+cp data/test-clean/train.tsv data/train-clean-100/test.tsv
 python $FAIRSEQ_PATH/examples/wav2vec/libri_labels.py $PWD/data/train-clean-100/test.tsv \
     --output-dir $PWD/data/train-clean-100 \
     --output-name test
 
 python $FAIRSEQ_PATH/examples/speech_recognition/infer.py data/train-clean-100/ --task audio_pretraining \
 --w2l-decoder viterbi --criterion ctc --labels ltr \
---post-process letter --path outputs/2021-06-13/20-03-09/checkpoints/checkpoint_best.pt
+--post-process letter --path outputs/finetunning/2021-07-03/epoch8000/checkpoints/checkpoint_best.pt

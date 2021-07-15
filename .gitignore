@@ -42,7 +42,6 @@ tools/venv/
 tools/anaconda
 tools/*.done
 tools/activate_python.sh
-tools/fairseq
 tools/flashlight
 tools/installer
 tools/arrayfire
