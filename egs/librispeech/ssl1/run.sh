@@ -66,8 +66,20 @@ export FAIRSEQ_PATH=../../../tools/fairseq
         --output-dir $PWD/data/train-clean-100 \
         --output-name valid
 
+    # Equal to V100 * 24 setting
+    # 960h
+    fairseq-hydra-train task.data=$PWD/data/train-960 \
+        task.normalize=false model.w2v_path=$PWD/downloads/libri960_big.pt \
+        dataset.valid_subset=valid \
+        distributed_training.distributed_world_size=4 \
+        optimization.update_freq='[8]' \
+        model.freeze_finetune_updates=0 \
+        --config-name vox_960h \
+        --config-dir $FAIRSEQ_PATH/examples/wav2vec/config/finetuning
+
+    # 100h
     fairseq-hydra-train task.data=$PWD/data/train-clean-100 \
-        task.normalize=false model.w2v_path=$PWD/downloads/libri960_big.pt optimization.max_update=80000\
+        task.normalize=false model.w2v_path=$PWD/downloads/libri960_big.pt \
         dataset.valid_subset=valid \
         distributed_training.distributed_world_size=4 \
         optimization.update_freq='[8]' \
@@ -75,15 +87,39 @@ export FAIRSEQ_PATH=../../../tools/fairseq
         --config-name vox_100h \
         --config-dir $FAIRSEQ_PATH/examples/wav2vec/config/finetuning
 
+    # 10h
+    fairseq-hydra-train task.data=$PWD/data/train-clean-10 \
+        task.normalize=false model.w2v_path=$PWD/downloads/libri960_big.pt \
+        dataset.valid_subset=valid \
+        distributed_training.distributed_world_size=4 \
+        optimization.update_freq='[8]' \
+        model.freeze_finetune_updates=0 \
+        --config-name vox_10h \
+        --config-dir $FAIRSEQ_PATH/examples/wav2vec/config/finetuning
+
+    # 1h
+    fairseq-hydra-train task.data=$PWD/data/train-clean-1 \
+        task.normalize=false model.w2v_path=$PWD/downloads/libri960_big.pt \
+        dataset.valid_subset=valid \
+        distributed_training.distributed_world_size=4 \
+        optimization.update_freq='[8]' \
+        model.freeze_finetune_updates=0 \
+        --config-name vox_1h \
+        --config-dir $FAIRSEQ_PATH/examples/wav2vec/config/finetuning
+
 # stage 4. decoding
-    cp data/test-clean/train.tsv data/train-clean-100/test.tsv
+    # cp data/test-clean/train.tsv data/train-clean-100/test.tsv
+    # cp data/test-other/train.tsv data/train-clean-100/test.tsv
+    # cp data/dev-clean/train.tsv data/train-clean-100/test.tsv
+    # cp data/dev-other/train.tsv data/train-clean-100/test.tsv
     python $FAIRSEQ_PATH/examples/wav2vec/libri_labels.py $PWD/data/train-clean-100/test.tsv \
         --output-dir $PWD/data/train-clean-100 \
         --output-name test
 
+    # export CKPTPATH=outputs/finetunning/960h/update80000/checkpoints/checkpoint_best.pt
     python $FAIRSEQ_PATH/examples/speech_recognition/infer.py data/train-clean-100/ --task audio_pretraining \
     --w2l-decoder viterbi --criterion ctc --labels ltr \
-    --post-process letter --path outputs/finetunning/2021-07-03/epoch8000/checkpoints/checkpoint_best.pt
+    --post-process letter --path $CKPTPATH
 
 # stage 5. generate pseudo label
 mkdir data/train-nl-860
@@ -115,6 +151,29 @@ fairseq-hydra-train task.data=$PWD/data/train-nl-960 \
         dataset.valid_subset=valid \
         distributed_training.distributed_world_size=4 \
         optimization.update_freq='[8]' \
+        model.freeze_finetune_updates=0 \
+        --config-name vox_100h \
+        --config-dir $FAIRSEQ_PATH/examples/wav2vec/config/finetuning
+
+# stage 7. decoding
+# cp data/test-clean/train.tsv data/train-nl-960/test.tsv
+# cp data/test-other/train.tsv data/train-nl-960/test.tsv
+# cp data/dev-clean/train.tsv data/train-nl-960/test.tsv
+cp data/dev-other/train.tsv data/train-nl-960/test.tsv
+python $FAIRSEQ_PATH/examples/wav2vec/libri_labels.py $PWD/data/train-nl-960/test.tsv \
+    --output-dir $PWD/data/train-nl-960 \
+    --output-name test
+
+python $FAIRSEQ_PATH/examples/speech_recognition/infer.py data/train-nl-960/ --task audio_pretraining \
+--w2l-decoder viterbi --criterion ctc --labels ltr \
+--post-process letter --path outputs/selftraining/2021-07-26/21-26-18/checkpoints/checkpoint_best.pt
+
+# etc. ctc supervised training
+    fairseq-hydra-train task.data=$PWD/data/train-clean-100 \
+        task.normalize=false model.w2v_path=$PWD/downloads/libri960_big.pt \
+        dataset.valid_subset=valid \
+        distributed_training.distributed_world_size=4 \
+        optimization.update_freq='[32]' \
         model.freeze_finetune_updates=0 \
         --config-name vox_100h \
         --config-dir $FAIRSEQ_PATH/examples/wav2vec/config/finetuning
