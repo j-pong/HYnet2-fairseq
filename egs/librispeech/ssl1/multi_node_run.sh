@@ -1,0 +1,1 @@
+parallel-ssh -A -h pssh_hosts -l root -i ". ~/Workspace/HYnet2-fairseq/egs/librispeech/ssl1/multi_node_train.sh"
